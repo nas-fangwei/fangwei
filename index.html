@@ -2,16 +2,201 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>防伪</title>
-    <link rel=stylesheet href=../html/css/base.css>
-    <link rel=stylesheet href=../html/css/ui-block.css>
-    <script src=nebPay.js></script>
+    <title>send transaction</title>
+    <link rel=stylesheet href=html/css/base.css>
+    <link rel=stylesheet href=html/css/ui-block.css>
+    <script src=nebPay.js></script>     <!-- you should add nebPay.js to you Dapp page><!-->
 </head>
 
 <style>
 </style>
 
 <body>
-123
+
+
+<h3 class="col">基于星云链的商品防伪程序</h3>
+
+<h3>厂商： 模拟厂商发布商品</h3>
+ <div>
+        <label for="inputNewPDID">商品唯一编号（例如：V3000-10123）</label>
+        <input id="inputNewPDID"  size="35" >
+</div>
+ <div>
+        <label for="inputNewPDINFO">备注信息</label>
+        <input id="inputNewPDINFO"  size="35" >
+    </div>
+     <div>
+        <button type="button" id="buttonSendTx" class="btn btn-block" onclick="onClickNewProduct()">出厂一件商品</button>
+        <p id="callResult" style="color:#FF0000;font-size:12px;"></p>
+    </div>
+
+
+<h3>消费者： 根据“商品唯一编号”来验证真伪</h3>
+<div>
+        <label for="inputGetPDID">商品唯一编号（例如：V3000-10123）</label>
+        <input id="inputGetPDID"  size="35" value="V3000-10123">
+</div>
+ <div>
+        <button type="button" id="buttonSendTx" class="btn btn-block" onclick="onClickGetProduct()">验证</button>
+        <p id="callResult2" style="color:#FF0000;font-size:12px;"></p>
+    </div>
+
+
+
+<script type="text/javascript">
+    window.onload=function(){
+        //to check if the extension is installed
+        //if the extension is installed, var "webExtensionWallet" will be injected in to web page
+        if(typeof(webExtensionWallet) === "undefined"){
+            alert ("未检测到webExtensionWallet插件，请安装webExtensionWallet。");
+            //alert ("未检测到webExtensionWallet插件，请安装webExtensionWallet。未装插件的用户只能使用“根据商品唯一编号来验证真伪”功能，不能发布新商品")
+        }
+    }
+
+    var NebPay = require("nebpay");
+    var nebPay = new NebPay();
+
+    var CTAddr="n1qhKL3A55epydpjE7MDqnJvChuBMNScPz7";//"n1qhKL3A55epydpjE7MDqnJvChuBMNScPz7";
+
+    //send transaction to another address
+    function onClickSendTx() {
+        var to = document.getElementById("inputReceiveAddress").value;
+        var amount = document.getElementById("inputAmount").value;
+        nebPay.pay(to, amount, {
+            qrcode: {
+                showQRCode: true
+            },
+            goods: {
+                name: "test",
+                desc: "test goods"
+            },
+            //callback: cbSendTx
+            listener: cbSendTx
+        });
+    }
+    //callback function of onClickSendTx, to handle the transaction response
+    function cbSendTx(resp){
+        console.log("callback resp: " + JSON.stringify(resp))
+        document.getElementById("txResult").innerHTML = "send transaction result:\n" +  JSON.stringify(resp)
+    }
+
+    function onClickCallDapp() {
+        var to = document.getElementById("inputContractAddress").value;
+        var value = document.getElementById("inputAmount2").value;
+        var callFunction = document.getElementById("inputFunction").value;
+        var callArgs = "[\"" + document.getElementById("inputParameter").value.trim() + "\"]"; //in the form of ["args"]
+        nebPay.call(to, value, callFunction, callArgs, {
+            qrcode: {
+                showQRCode: true
+            },
+            goods: {
+                name: "test",
+                desc: "test goods"
+            },
+            //callback: cbCallDapp
+            listener: cbCallDapp
+        });
+    }
+
+    function cbCallDapp(resp){
+        console.log("callback resp: " + JSON.stringify(resp))
+        document.getElementById("callResult").innerHTML = "call Dapp result:\n" +  JSON.stringify(resp)
+    }
+
+    function onClickSimulateCall() {
+        var to = document.getElementById("inputContractAddress").value;
+        var value = document.getElementById("inputAmount2").value;
+        var callFunction = document.getElementById("inputFunction").value;
+        var callArgs = "[\"" + document.getElementById("inputParameter").value.trim() + "\"]"; //in the form of ["args"]
+        nebPay.simulateCall(to, value, callFunction, callArgs, {
+            qrcode: {
+                showQRCode: true
+            },
+            goods: {
+                name: "test",
+                desc: "test goods"
+            },
+            listener: cbSimulateCall
+        });
+    }
+
+    function cbSimulateCall(resp){
+        console.log("callback resp: " + JSON.stringify(resp))
+        document.getElementById("simulateCallResult").innerHTML = "simulate call result:\n" +  JSON.stringify(resp)
+    }
+
+
+
+    function onClickNewProduct() {
+        var to = CTAddr;//document.getElementById("inputContractAddress").value;
+        var value = "0";//document.getElementById("inputAmount2").value;
+        var callFunction = "newProduct";// document.getElementById("inputFunction").value;
+        var args=[document.getElementById("inputNewPDID").value.trim(),{"info":document.getElementById("inputNewPDINFO").value.trim()}]
+        var callArgs = JSON.stringify(args);//"[\"" + document.getElementById("inputParameter").value.trim() + "\"]"; //in the form of ["args"]
+
+        nebPay.call(to, value, callFunction, callArgs, {
+            qrcode: {
+                showQRCode: false
+            },
+            goods: {
+                name: "test",
+                desc: "test goods"
+            },
+            //callback: cbCallDapp
+            listener: cbNewProduct
+        });
+    }
+    function cbNewProduct(resp){
+        console.log(resp);
+        if (!resp.txhash){
+            document.getElementById("callResult").innerHTML="操作失败！ 返回消息为："+JSON.stringify(resp)
+        }else{
+            document.getElementById("callResult").innerHTML="操作成功！将在15秒内生效。 交易id为"+resp.txhash+"。下一步，厂商可以在商品上附带(例如在瓶身印上)唯一编号，购买到该商品的消费者便可以通过唯一编号查询验证是否正品";
+            document.getElementById("inputGetPDID").value=document.getElementById("inputNewPDID").value.trim();
+        }
+        // console.log("callback resp: " + JSON.stringify(resp))
+        // document.getElementById("callResult").innerHTML = "onClickNewProduct result:\n" +  JSON.stringify(resp)
+    }
+
+    function onClickGetProduct() {
+        var to = CTAddr;//document.getElementById("inputContractAddress").value;
+        var value = "0";//document.getElementById("inputAmount2").value;
+        var callFunction = "getProduct";//document.getElementById("inputFunction").value;
+        var callArgs = "[\"" + document.getElementById("inputGetPDID").value.trim() + "\"]"; //in the form of ["args"]
+        nebPay.simulateCall(to, value, callFunction, callArgs, {
+            qrcode: {
+                showQRCode: false
+            },
+            goods: {
+                name: "test",
+                desc: "test goods"
+            },
+            listener: cbClickGetProduct
+        });
+    }
+
+    function cbClickGetProduct(resp){
+        if(!resp.result){
+            document.getElementById("callResult2").innerHTML="操作失败！ 返回消息为："+JSON.stringify(resp);
+            return;
+        }
+        if(resp.result=="null"){
+            document.getElementById("callResult2").innerHTML="未查到该编号的商品！ 可能的原因：1.编号输入错误;2.数据暂未生效；3.假冒产品！ 返回消息为："+JSON.stringify(resp);
+            return;
+        }
+        var resu=JSON.parse(resp.result);
+        if(!resu.from){
+            document.getElementById("callResult2").innerHTML="数据出错！ 返回消息为："+JSON.stringify(resp);
+            return;
+        }
+        document.getElementById("callResult2").innerHTML="验证通过！该商品出厂时间:"+resu.date+" 厂商:"+resu.from+" 信息："+resu.info+" 返回消息为："+JSON.stringify(resp);
+        console.log(resp);
+        console.log("callback resp: " + JSON.stringify(resp))
+        //document.getElementById("simulateCallResult").innerHTML = "simulate call result:\n" +  JSON.stringify(resp)
+    }
+
+
+</script>
+
 </body>
 </html>
